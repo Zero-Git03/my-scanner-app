@@ -1,15 +1,15 @@
-<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>‚¨‰ïŒvƒXƒLƒƒƒi[</title>
+    <title>ãŠä¼šè¨ˆã‚¹ã‚­ãƒ£ãƒŠãƒ¼</title>
     <meta name="theme-color" content="#4CAF50">
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon.png">
 
     <style>
-        /* ƒ‚ƒoƒCƒ‹ƒtƒ@[ƒXƒg‚ÈƒXƒ^ƒCƒ‹’è‹` */
+        /* å‰å›ã®ã‚¹ã‚¿ã‚¤ãƒ«ã¨åŒã˜ã§ã™ãŒã€è¦‹ã‚„ã™ã•ã‚’ç¶­æŒ */
         :root {
             --primary-color: #4CAF50;
             --bg-color: #f4f4f4;
@@ -47,7 +47,6 @@
             gap: 1rem;
         }
         
-        /* ƒJƒƒ‰•\¦ƒGƒŠƒA */
         #reader {
             width: 100%;
             background: #000;
@@ -56,14 +55,13 @@
             margin-bottom: 1rem;
         }
 
-        /* Œ‹‰Ê•\¦ƒJ[ƒh */
         #result-card {
             background: white;
             padding: 1.5rem;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             text-align: center;
-            display: none; /* ‰Šúó‘Ô‚Í”ñ•\¦ */
+            display: none;
         }
         #result-card.active {
             display: block;
@@ -85,7 +83,6 @@
             font-size: 1.2rem;
         }
 
-        /* ƒAƒNƒVƒ‡ƒ“ƒ{ƒ^ƒ“ */
         button {
             background-color: var(--primary-color);
             color: white;
@@ -96,7 +93,7 @@
             cursor: pointer;
             width: 100%;
             margin-top: 1rem;
-            touch-action: manipulation; /* ƒ^ƒbƒ`’x‰„‰ğÁ */
+            touch-action: manipulation;
         }
         button:active {
             transform: scale(0.98);
@@ -106,60 +103,47 @@
             0% { transform: scale(0.8); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
-
-        /* html5-qrcode‚Ì”÷’²® */
-        #reader__scan_region img { display: none; } /* •s—v‚È‰æ‘œ‚ğÁ‚· */
+        #reader__scan_region img { display: none; }
     </style>
 </head>
 <body>
 
-    <header>ƒ|ƒPƒbƒgƒŒƒW PWA</header>
+    <header>ãƒã‚±ãƒƒãƒˆãƒ¬ã‚¸ PWA</header>
 
     <main>
         <div id="reader"></div>
 
         <div id="result-card">
-            <div id="display-name" class="product-name">¤•i–¼</div>
+            <div id="display-name" class="product-name">å•†å“å</div>
             <div id="display-price" class="product-price">\0</div>
-            <button onclick="resetScanner()">Ÿ‚Ì¤•i‚ğƒXƒLƒƒƒ“</button>
+            <button onclick="resetScanner()">æ¬¡ã®å•†å“ã‚’ã‚¹ã‚­ãƒ£ãƒ³</button>
         </div>
         
         <div style="font-size: 0.8rem; color: #666; margin-top: 2rem;">
-            <p><strong>“®ìŠm”F—pJANƒR[ƒhiƒ_ƒ~[j:</strong></p>
-            <ul>
-                <li>4901330502881 (ƒ|ƒeƒgƒ`ƒbƒvƒX)</li>
-                <li>4902105033746 (ƒJƒbƒvƒk[ƒhƒ‹)</li>
-                <li>4549131970258 (’PO“d’r)</li>
-            </ul>
+            <p><strong>ãƒ†ã‚¹ãƒˆç”¨ã‚³ãƒ¼ãƒ‰:</strong> 4901330502881 (ãƒãƒ†ãƒˆãƒãƒƒãƒ—ã‚¹)</p>
         </div>
     </main>
 
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <script>
-        // PWA Service Worker‚Ì“o˜^
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('SW registered!', reg))
-                    .catch(err => console.log('SW failed', err));
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW failed', err));
             });
         }
 
-        // 1. ƒ_ƒ~[ƒf[ƒ^’è‹` (JANƒR[ƒh‚ğƒL[‚É‚·‚é)
         const productDB = {
-            '4901330502881': { name: 'ƒ|ƒeƒgƒ`ƒbƒvƒX ‚¤‚·‚µ‚¨', price: 108 },
-            '4902105033746': { name: 'ƒJƒbƒvƒk[ƒhƒ‹ ƒV[ƒt[ƒh', price: 214 },
-            '4901777284136': { name: 'ˆÉ‰E‰q–å 600ml', price: 160 },
-            '4549131970258': { name: 'DAISO ƒAƒ‹ƒJƒŠŠ£“d’r', price: 110 },
-            '4902777008763': { name: '–¾¡ƒ~ƒ‹ƒNƒ`ƒ‡ƒRƒŒ[ƒg', price: 130 }
+            '4901330502881': { name: 'ãƒãƒ†ãƒˆãƒãƒƒãƒ—ã‚¹ ã†ã™ã—ãŠ', price: 108 },
+            '4902105033746': { name: 'ã‚«ãƒƒãƒ—ãƒŒãƒ¼ãƒ‰ãƒ« ã‚·ãƒ¼ãƒ•ãƒ¼ãƒ‰', price: 214 },
+            '4901777284136': { name: 'ä¼Šå³è¡›é–€ 600ml', price: 160 },
+            '4549131970258': { name: 'DAISO ã‚¢ãƒ«ã‚«ãƒªä¹¾é›»æ± ', price: 110 },
+            '4902777008763': { name: 'æ˜æ²»ãƒŸãƒ«ã‚¯ãƒãƒ§ã‚³ãƒ¬ãƒ¼ãƒˆ', price: 130 }
         };
 
         let html5QrcodeScanner = null;
 
-        // 2. ƒXƒLƒƒƒ“¬Œ÷‚Ìˆ—
         function onScanSuccess(decodedText, decodedResult) {
-            // ˜A‘±ƒXƒLƒƒƒ“‚ğ–h‚®‚½‚ß‚Éˆê’â~
             if (html5QrcodeScanner) {
                 html5QrcodeScanner.clear(); 
             }
@@ -169,49 +153,49 @@
             const priceEl = document.getElementById('display-price');
             const readerEl = document.getElementById('reader');
 
-            readerEl.style.display = 'none'; // ƒJƒƒ‰‚ğ‰B‚·
-            resultCard.className = 'active'; // Œ‹‰Ê‚ğ•\¦
+            readerEl.style.display = 'none';
+            resultCard.className = 'active';
 
-            // ƒf[ƒ^Æ‡
             const item = productDB[decodedText];
             if (item) {
                 nameEl.textContent = item.name;
                 nameEl.classList.remove('unknown-item');
                 priceEl.textContent = `\${item.price}`;
-                // Œø‰Ê‰¹‚È‚Ç‚ğ–Â‚ç‚·‚È‚ç‚±‚±
             } else {
-                nameEl.textContent = `–¢“o˜^‚Ì¤•i: ${decodedText}`;
+                nameEl.textContent = `æœªç™»éŒ²: ${decodedText}`;
                 nameEl.classList.add('unknown-item');
                 priceEl.textContent = '---';
             }
         }
 
         function onScanFailure(error) {
-            // ƒXƒLƒƒƒ“’†‚ÌŒy”÷‚ÈƒGƒ‰[‚Í–³‹iƒRƒ“ƒ\[ƒ‹‚ª‰˜‚ê‚é‚½‚ßj
+            // ã‚¨ãƒ©ãƒ¼ãƒ­ã‚°æŠ‘åˆ¶
         }
 
-        // 3. ƒXƒLƒƒƒi[‹N“®
         function startScanner() {
-            // UI•t‚«‚ÌƒXƒLƒƒƒi[‚ğ‰Šú‰»
-            html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader", 
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                /* verbose= */ false
-            );
+            // â–¼â–¼â–¼ ã“ã“ã‚’ä¿®æ­£ã—ã¾ã—ãŸï¼šã‚«ãƒ¡ãƒ©è¨­å®šã‚’è¿½åŠ  â–¼â–¼â–¼
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 },
+                // èƒŒé¢ã‚«ãƒ¡ãƒ©ï¼ˆenvironmentï¼‰ã‚’å„ªå…ˆçš„ã«ä½¿ç”¨ã™ã‚‹è¨­å®š
+                videoConstraints: {
+                    facingMode: "environment"
+                }
+            };
+            // â–²â–²â–² ä¿®æ­£ã“ã“ã¾ã§ â–²â–²â–²
+
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", config, false);
             html5QrcodeScanner.render(onScanSuccess, onScanFailure);
         }
 
-        // 4. ƒŠƒZƒbƒgiÄƒXƒLƒƒƒ“j
         function resetScanner() {
-            document.getElementById('result-card').className = ''; // Œ‹‰Ê‚ğ‰B‚·
+            document.getElementById('result-card').className = '';
             document.getElementById('result-card').style.display = 'none';
-            document.getElementById('reader').style.display = 'block'; // ƒJƒƒ‰‚ğ•\¦
+            document.getElementById('reader').style.display = 'block';
             startScanner();
         }
 
-        // ‰Šú‹N“®
         startScanner();
-
     </script>
 </body>
 </html>
