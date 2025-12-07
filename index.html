@@ -9,7 +9,6 @@
     <link rel="manifest" href="manifest.json">
 
     <style>
-        /* 前回のスタイルと同じですが、見やすさを維持 */
         :root {
             --primary-color: #4CAF50;
             --bg-color: #f4f4f4;
@@ -35,38 +34,63 @@
             font-size: 1.2rem;
             font-weight: bold;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            position: fixed; /* ヘッダー固定 */
+            top: 0;
+            z-index: 100;
         }
         main {
             width: 100%;
             max-width: 600px;
             padding: 1rem;
+            padding-top: 4rem; /* ヘッダー分空ける */
             box-sizing: border-box;
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            align-items: center;
         }
         
+        /* カメラエリアのデザイン調整 */
         #reader {
             width: 100%;
+            /* スマホ画面の幅に合わせる */
+            min-height: 300px;
             background: #000;
             border-radius: 8px;
             overflow: hidden;
-            margin-bottom: 1rem;
+            position: relative;
+        }
+        
+        /* 読み取り枠のガイド（CSSで自作） */
+        #reader::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200px;
+            height: 200px;
+            border: 4px solid rgba(76, 175, 80, 0.7);
+            transform: translate(-50%, -50%);
+            border-radius: 16px;
+            pointer-events: none;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4); /* 周りを暗くする */
         }
 
         #result-card {
+            width: 90%;
             background: white;
             padding: 1.5rem;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             text-align: center;
             display: none;
+            position: absolute; /* 画面中央に表示 */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 200;
         }
-        #result-card.active {
-            display: block;
-            animation: popIn 0.3s ease-out;
-        }
+        
         .product-name {
             font-size: 1.5rem;
             font-weight: bold;
@@ -93,17 +117,17 @@
             cursor: pointer;
             width: 100%;
             margin-top: 1rem;
-            touch-action: manipulation;
-        }
-        button:active {
-            transform: scale(0.98);
         }
 
-        @keyframes popIn {
-            0% { transform: scale(0.8); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
+        /* エラーメッセージ用 */
+        #error-message {
+            color: red;
+            background: #ffe6e6;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+            margin-top: 10px;
         }
-        #reader__scan_region img { display: none; }
     </style>
 </head>
 <body>
@@ -112,24 +136,27 @@
 
     <main>
         <div id="reader"></div>
+        <div id="error-message"></div>
 
         <div id="result-card">
             <div id="display-name" class="product-name">商品名</div>
             <div id="display-price" class="product-price">\0</div>
-            <button onclick="resetScanner()">次の商品をスキャン</button>
+            <button onclick="restartScanner()">次の商品をスキャン</button>
         </div>
         
-        <div style="font-size: 0.8rem; color: #666; margin-top: 2rem;">
-            <p><strong>テスト用コード:</strong> 4901330502881 (ポテトチップス)</p>
+        <div style="font-size: 0.8rem; color: #666; margin-top: 2rem; text-align:center;">
+            <p>枠内にバーコードを合わせてください</p>
+            <p><strong>テスト用:</strong> 4901330502881 (ポテトチップス)</p>
         </div>
     </main>
 
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <script>
+        // PWA設定
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW failed', err));
+                navigator.serviceWorker.register('./sw.js').catch(console.error);
             });
         }
 
@@ -141,20 +168,22 @@
             '4902777008763': { name: '明治ミルクチョコレート', price: 130 }
         };
 
-        let html5QrcodeScanner = null;
+        // UI制御ではなく、より詳細設定が可能なクラスを使用
+        let html5QrCode = null;
 
+        // スキャン成功時
         function onScanSuccess(decodedText, decodedResult) {
-            if (html5QrcodeScanner) {
-                html5QrcodeScanner.clear(); 
+            // カメラを一時停止
+            if (html5QrCode) {
+                html5QrCode.pause(); 
             }
 
             const resultCard = document.getElementById('result-card');
             const nameEl = document.getElementById('display-name');
             const priceEl = document.getElementById('display-price');
-            const readerEl = document.getElementById('reader');
 
-            readerEl.style.display = 'none';
-            resultCard.className = 'active';
+            // 画面表示
+            resultCard.style.display = 'block';
 
             const item = productDB[decodedText];
             if (item) {
@@ -168,34 +197,43 @@
             }
         }
 
-        function onScanFailure(error) {
-            // エラーログ抑制
+        // カメラ起動処理
+        async function startScanner() {
+            try {
+                html5QrCode = new Html5Qrcode("reader");
+                
+                // ここが重要：facingMode: "environment" で背面カメラを指定
+                await html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 },
+                        aspectRatio: 1.0
+                    },
+                    onScanSuccess,
+                    (errorMessage) => {
+                        // 認識中のエラーは無視（コンソールが汚れるため）
+                    }
+                );
+            } catch (err) {
+                console.error("Error starting scanner", err);
+                const errorEl = document.getElementById('error-message');
+                errorEl.style.display = 'block';
+                errorEl.textContent = "カメラの起動に失敗しました。ブラウザのカメラ権限を確認してください。";
+            }
         }
 
-        function startScanner() {
-            // ▼▼▼ ここを修正しました：カメラ設定を追加 ▼▼▼
-            const config = { 
-                fps: 10, 
-                qrbox: { width: 250, height: 250 },
-                // 背面カメラ（environment）を優先的に使用する設定
-                videoConstraints: {
-                    facingMode: "environment"
-                }
-            };
-            // ▲▲▲ 修正ここまで ▲▲▲
-
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", config, false);
-            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-        }
-
-        function resetScanner() {
-            document.getElementById('result-card').className = '';
+        // 再開処理
+        function restartScanner() {
             document.getElementById('result-card').style.display = 'none';
-            document.getElementById('reader').style.display = 'block';
-            startScanner();
+            if (html5QrCode) {
+                html5QrCode.resume(); // 一時停止していたカメラを再開
+            }
         }
 
+        // ページ読み込み時に起動
         startScanner();
+
     </script>
 </body>
 </html>
