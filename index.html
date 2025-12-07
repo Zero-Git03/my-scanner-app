@@ -34,7 +34,7 @@
             font-size: 1.2rem;
             font-weight: bold;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            position: fixed; /* ヘッダー固定 */
+            position: fixed;
             top: 0;
             z-index: 100;
         }
@@ -42,7 +42,7 @@
             width: 100%;
             max-width: 600px;
             padding: 1rem;
-            padding-top: 4rem; /* ヘッダー分空ける */
+            padding-top: 4rem;
             box-sizing: border-box;
             flex: 1;
             display: flex;
@@ -50,10 +50,8 @@
             align-items: center;
         }
         
-        /* カメラエリアのデザイン調整 */
         #reader {
             width: 100%;
-            /* スマホ画面の幅に合わせる */
             min-height: 300px;
             background: #000;
             border-radius: 8px;
@@ -61,7 +59,6 @@
             position: relative;
         }
         
-        /* 読み取り枠のガイド（CSSで自作） */
         #reader::after {
             content: "";
             position: absolute;
@@ -73,7 +70,7 @@
             transform: translate(-50%, -50%);
             border-radius: 16px;
             pointer-events: none;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4); /* 周りを暗くする */
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
         }
 
         #result-card {
@@ -84,7 +81,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             text-align: center;
             display: none;
-            position: absolute; /* 画面中央に表示 */
+            position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -119,7 +116,6 @@
             margin-top: 1rem;
         }
 
-        /* エラーメッセージ用 */
         #error-message {
             color: red;
             background: #ffe6e6;
@@ -153,7 +149,6 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <script>
-        // PWA設定
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').catch(console.error);
@@ -168,12 +163,16 @@
             '4902777008763': { name: '明治ミルクチョコレート', price: 130 }
         };
 
-        // UI制御ではなく、より詳細設定が可能なクラスを使用
         let html5QrCode = null;
 
-        // スキャン成功時
         function onScanSuccess(decodedText, decodedResult) {
-            // カメラを一時停止
+            // ▼▼▼ 追加: バイブレーション (Androidのみ) ▼▼▼
+            if (navigator.vibrate) {
+                // 200ミリ秒だけ振動させる
+                navigator.vibrate(200);
+            }
+            // ▲▲▲ 追加ここまで ▲▲▲
+
             if (html5QrCode) {
                 html5QrCode.pause(); 
             }
@@ -182,7 +181,6 @@
             const nameEl = document.getElementById('display-name');
             const priceEl = document.getElementById('display-price');
 
-            // 画面表示
             resultCard.style.display = 'block';
 
             const item = productDB[decodedText];
@@ -197,12 +195,9 @@
             }
         }
 
-        // カメラ起動処理
         async function startScanner() {
             try {
                 html5QrCode = new Html5Qrcode("reader");
-                
-                // ここが重要：facingMode: "environment" で背面カメラを指定
                 await html5QrCode.start(
                     { facingMode: "environment" }, 
                     {
@@ -211,29 +206,24 @@
                         aspectRatio: 1.0
                     },
                     onScanSuccess,
-                    (errorMessage) => {
-                        // 認識中のエラーは無視（コンソールが汚れるため）
-                    }
+                    (errorMessage) => {}
                 );
             } catch (err) {
                 console.error("Error starting scanner", err);
                 const errorEl = document.getElementById('error-message');
                 errorEl.style.display = 'block';
-                errorEl.textContent = "カメラの起動に失敗しました。ブラウザのカメラ権限を確認してください。";
+                errorEl.textContent = "カメラの起動に失敗しました。";
             }
         }
 
-        // 再開処理
         function restartScanner() {
             document.getElementById('result-card').style.display = 'none';
             if (html5QrCode) {
-                html5QrCode.resume(); // 一時停止していたカメラを再開
+                html5QrCode.resume();
             }
         }
 
-        // ページ読み込み時に起動
         startScanner();
-
     </script>
 </body>
 </html>
