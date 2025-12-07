@@ -59,6 +59,7 @@
             position: relative;
         }
         
+        /* 読み取りガイド枠 */
         #reader::after {
             content: "";
             position: absolute;
@@ -114,6 +115,8 @@
             cursor: pointer;
             width: 100%;
             margin-top: 1rem;
+            /* タッチ操作の反応を良くする */
+            touch-action: manipulation;
         }
 
         #error-message {
@@ -123,6 +126,7 @@
             border-radius: 4px;
             display: none;
             margin-top: 10px;
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -137,7 +141,7 @@
         <div id="result-card">
             <div id="display-name" class="product-name">商品名</div>
             <div id="display-price" class="product-price">\0</div>
-            <button onclick="restartScanner()">次の商品をスキャン</button>
+            <button onclick="startScanner()">次の商品をスキャン</button>
         </div>
         
         <div style="font-size: 0.8rem; color: #666; margin-top: 2rem; text-align:center;">
@@ -160,44 +164,80 @@
             '4902105033746': { name: 'カップヌードル シーフード', price: 214 },
             '4901777284136': { name: '伊右衛門 600ml', price: 160 },
             '4549131970258': { name: 'DAISO アルカリ乾電池', price: 110 },
-            '4902777008763': { name: '明治ミルクチョコレート', price: 130 }
+            '4901777423275': { name: 'サントリー 特水', price: 150 }
         };
 
         let html5QrCode = null;
+        let isScanning = false; // 重複スキャン防止フラグ
 
+        // スキャン成功時
         function onScanSuccess(decodedText, decodedResult) {
-            // ▼▼▼ 追加: バイブレーション (Androidのみ) ▼▼▼
+            if (!isScanning) return; // 既に処理中なら無視
+            isScanning = false;      // ロックする
+
+            // バイブレーション (Androidのみ動作、iPhoneは仕様で不可)
             if (navigator.vibrate) {
-                // 200ミリ秒だけ振動させる
-                navigator.vibrate(200);
+                try { navigator.vibrate(200); } catch(e){}
             }
-            // ▲▲▲ 追加ここまで ▲▲▲
 
+            // カメラを「停止」する（PauseではなくStop）
             if (html5QrCode) {
-                html5QrCode.pause(); 
+                html5QrCode.stop().then(() => {
+                    console.log("Camera stopped");
+                    showResult(decodedText);
+                }).catch(err => {
+                    console.error("Stop failed", err);
+                    showResult(decodedText); // エラーでも結果は出す
+                });
+            } else {
+                showResult(decodedText);
             }
+        }
 
+        function showResult(code) {
             const resultCard = document.getElementById('result-card');
             const nameEl = document.getElementById('display-name');
             const priceEl = document.getElementById('display-price');
+            const readerEl = document.getElementById('reader');
 
+            // カメラ画面を隠す（チラつき防止）
+            readerEl.style.visibility = 'hidden';
             resultCard.style.display = 'block';
 
-            const item = productDB[decodedText];
+            const item = productDB[code];
             if (item) {
                 nameEl.textContent = item.name;
                 nameEl.classList.remove('unknown-item');
                 priceEl.textContent = `\${item.price}`;
             } else {
-                nameEl.textContent = `未登録: ${decodedText}`;
+                nameEl.textContent = `未登録: ${code}`;
                 nameEl.classList.add('unknown-item');
                 priceEl.textContent = '---';
             }
         }
 
         async function startScanner() {
+            // UIのリセット
+            document.getElementById('result-card').style.display = 'none';
+            document.getElementById('error-message').style.display = 'none';
+            
+            const readerEl = document.getElementById('reader');
+            readerEl.style.visibility = 'visible';
+
+            isScanning = true; // スキャン開始フラグ
+
             try {
-                html5QrCode = new Html5Qrcode("reader");
+                // インスタンスがなければ作成
+                if (!html5QrCode) {
+                    html5QrCode = new Html5Qrcode("reader");
+                }
+
+                // すでに動いていたら念のため停止
+                if (html5QrCode.isScanning) {
+                    await html5QrCode.stop();
+                }
+
+                // 起動
                 await html5QrCode.start(
                     { facingMode: "environment" }, 
                     {
@@ -206,23 +246,20 @@
                         aspectRatio: 1.0
                     },
                     onScanSuccess,
-                    (errorMessage) => {}
+                    (errorMessage) => {
+                        // 読み取り中のエラーは無視
+                    }
                 );
             } catch (err) {
                 console.error("Error starting scanner", err);
+                isScanning = false;
                 const errorEl = document.getElementById('error-message');
                 errorEl.style.display = 'block';
-                errorEl.textContent = "カメラの起動に失敗しました。";
+                errorEl.textContent = "カメラ起動エラー: ページを再読み込みしてください。";
             }
         }
 
-        function restartScanner() {
-            document.getElementById('result-card').style.display = 'none';
-            if (html5QrCode) {
-                html5QrCode.resume();
-            }
-        }
-
+        // 初回起動
         startScanner();
     </script>
 </body>
